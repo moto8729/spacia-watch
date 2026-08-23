@@ -1,1 +1,43 @@
+name: spacia-watch
 
+on:
+  schedule:
+    - cron: '7 * * * *'   # 毎時7分（UTC基準・多少の遅延あり）
+  workflow_dispatch:       # 手動実行ボタン
+
+permissions:
+  contents: write
+
+concurrency:
+  group: spacia-watch
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: ライブラリをインストール
+        run: pip install -r requirements.txt
+
+      - name: 空席チェック実行
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
+        run: python spacia_watch.py
+
+      - name: 状態ファイルを保存
+        run: |
+          git config user.name "spacia-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add state.json
+          git diff --cached --quiet || git commit -m "update state [skip ci]"
+          git push
