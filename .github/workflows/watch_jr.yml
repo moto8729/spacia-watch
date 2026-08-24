@@ -1,0 +1,44 @@
+name: watch-jr
+
+on:
+  schedule:
+    - cron: '37 * * * *'   # 毎時37分（スペーシアXと時間をずらす）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: watch-jr
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: ライブラリをインストール
+        run: pip install -r requirements.txt
+
+      - name: 空席チェック実行
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
+        run: python jr_watch.py
+
+      - name: 状態ファイルを保存
+        run: |
+          git config user.name "jr-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git pull --rebase --autostash || true
+          git add state_jr.json
+          git diff --cached --quiet || git commit -m "update jr state [skip ci]"
+          git push
