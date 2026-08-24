@@ -283,7 +283,7 @@ def send_mail(subject, body):
         print("件名:", subject)
         print(body)
         return
-        to = (os.environ.get("MAIL_TO") or "").strip() or user
+    to = (os.environ.get("MAIL_TO") or "").strip() or user
     msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = Header(subject, "utf-8")
     msg["From"] = user
